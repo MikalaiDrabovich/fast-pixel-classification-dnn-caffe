@@ -1,4 +1,6 @@
 A complete example, from reading input images, to saving frames/videos
 
-Some additional python modules may be required:
-numpy, cv2, weave
+Model descritptions and trained weigthts should be copied to ./models folder
+
+Some additional python modules may be required: numpy, cv2, weave
+
