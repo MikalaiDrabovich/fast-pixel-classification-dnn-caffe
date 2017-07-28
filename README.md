@@ -1,2 +1,1 @@
-# fast-pixel-classification-dnn-caffe
-# fast-pixel-classification-dnn-caffe
+Complete example, from reading input images, to saving frames/videos
