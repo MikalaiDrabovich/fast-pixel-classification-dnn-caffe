@@ -1,9 +1,5 @@
-Complete example, from reading input images, to saving frames/videos
+A complete example, from reading input images, to saving frames/videos
 
-Requirements:
-
+Some additional python modules may be required:
 cv2
-numpy
-cProfile
 weave
-caffe
