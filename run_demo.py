@@ -132,7 +132,8 @@ if __name__ == "__main__":
 
 
     createVideoFromResults = False
-
+    show_gui = False
+    
     input_w = 2048
     input_h = 1024
 
@@ -187,7 +188,8 @@ if __name__ == "__main__":
     alpha = 0.7
     blended_result = np.empty((input_h, input_w, 3), dtype=np.uint8)
 
-    cv2.namedWindow("Demo")
+    if show_gui:
+        cv2.namedWindow("Demo")
 
     num_images_processed = 0
     for image in input_images_for_demo:     # main loop
@@ -214,7 +216,8 @@ if __name__ == "__main__":
 
         start = time.time()
 
-        cv2.imshow("Demo", blended_result)
+	if show_gui:
+            cv2.imshow("Demo", blended_result)
 
 
         print("cv2 output time: {} ms.".format(round((time.time() - start) * 1000)))
@@ -239,8 +242,8 @@ if __name__ == "__main__":
     if createVideoFromResults:
         writer.release()
 
-
-    cv2.destroyWindow("Demo")
+    if show_gui:
+        cv2.destroyWindow("Demo")
 
 
     profiler.disable()
