@@ -130,10 +130,11 @@ if __name__ == "__main__":
     model_weights = './models/this_needs_to_be_provided_by_you.caffemodel'
     model_description = './models/this_needs_to_be_provided_by_you.prototxt'
 
-
     createVideoFromResults = False
     show_gui = False
- 
+    save_results = False
+    results_folder = './results/'
+
     input_w = 2048
     input_h = 1024
 
@@ -218,6 +219,9 @@ if __name__ == "__main__":
 
 	if show_gui:
             cv2.imshow("Demo", blended_result)
+
+	if save_results:
+	    cv2.imwrite(results_folder + os.path.basename(image))
 
         print("cv2 output time: {} ms.".format(round((time.time() - start) * 1000)))
 
