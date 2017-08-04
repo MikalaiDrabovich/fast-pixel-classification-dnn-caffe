@@ -29,7 +29,7 @@ def id2bgr(im):
     The BGR values are compatible with CityScapes dataset:
     github.com/mcordts/cityscapesScripts/blob/master/cityscapesscripts/helpers/labels.py
     """
-    c1, w, h = im.shape
+    w, h = im.shape
     color_image = np.empty((w, h, 3), dtype=np.uint8)
     code = """
     unsigned char cityscape_object_colors[19][3] = {
@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
     createVideoFromResults = False
     show_gui = False
-    
+ 
     input_w = 2048
     input_h = 1024
 
@@ -218,7 +218,6 @@ if __name__ == "__main__":
 
 	if show_gui:
             cv2.imshow("Demo", blended_result)
-
 
         print("cv2 output time: {} ms.".format(round((time.time() - start) * 1000)))
 
