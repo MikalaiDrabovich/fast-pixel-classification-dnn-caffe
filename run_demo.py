@@ -1,7 +1,19 @@
 # coding=utf-8
 """
-Fast object recognition with a pretrained deep neural net of road objects.
-Recognized objects will have the same colors as in CityScapes dataset. 
+Fast object recognition of road objects 
+with a deep neural neural network.
+You can preview results in real time in GUI,
+generate video with results or save all frames as images.
+Coloring scheme should be compatible with CityScapes dataset.
+
+You just need to copy your own pretrained model and its description to ./models
+and optionally provide path to caffe installation folder.
+
+To run with GUI you need to install OpenCV for python with gui support.
+https://stackoverflow.com/questions/36833661/installing-opencv-with-gui-on-ubuntu
+
+If GUI is not necessary, 'pip install opencv-python' may be sufficient.
+
 See __main__ for the settings.
 
 Mikalai Drabovich (nick.drabovich@amd.com)
@@ -11,13 +23,13 @@ import os
 import sys
 import time
 
+#import cProfile
 import cv2
 import numpy as np
-import cProfile
 import weave
 
 #if necessary, use custom caffe build
-#sys.path.insert(0, 'build/install/python')
+#sys.path.insert(0, '/home/ndr/Downloads/caffe/install_new/python')
 import caffe
 
 
@@ -112,7 +124,11 @@ def feed_and_run(input_frame):
 
     start = time.time()
 
-    result_with_train_ids = net.blobs['score'].data[0].argmax(axis=0).astype(np.uint8)
+    if model_has_argmax:
+        result_with_train_ids = net.blobs['recognized_object_ids'].data[0].astype(np.uint8)
+        result_with_train_ids = np.squeeze(result_with_train_ids, axis=0)
+    else:
+        result_with_train_ids = net.blobs['score'].data[0].argmax(axis=0).astype(np.uint8)
 
     print("ArgMax took {} ms.".format(round((time.time() - start) * 1000)))
 
@@ -126,39 +142,61 @@ def feed_and_run(input_frame):
 if __name__ == "__main__":
 
     #------------------------ Change main parameters here ---------------
-
-    model_weights = './models/this_needs_to_be_provided_by_you.caffemodel'
-    model_description = './models/this_needs_to_be_provided_by_you.prototxt'
-
-    createVideoFromResults = False
-    show_gui = False
-    save_results = False
-    results_folder = './results/'
+ 
+    createVideoFromResults = True
+    video_results_dir = './video_results/'
+    
+    show_gui = True
+    save_image_results = True
+    
+    image_results_dir = './image_results/'
 
     input_w = 2048
     input_h = 1024
 
+    # # Models with argmax and without upsampling are faster.
+    
+    # # original model
+    # # model_description = './models/deploy_model_with_upsampling_without_argmax.prototxt'
+    # # model_has_argmax = False
+    # # 
+    # # improved 1
+    # # odel_description = './models/deploy_model_with_upsampling_with_argmax.prototxt'
+    # # model_has_argmax = True
+    # # 
+    # # improved 2
+    # # model_description = './models/deploy_model_without_upsampling_without_argmax.prototxt'
+    # # model_has_argmax = False
+    # # 
+    # # improved 3, should be the fastest
+    model_description = './models/deploy_model_without_upsampling_with_argmax.prototxt'
+    model_has_argmax = True
+    model_weights = './models/weights.caffemodel'
+ 
+    # comment out these two lines once you copied trained models and descriptions to ./models
+    model_weights = './models/this_needs_to_be_provided_by_you.caffemodel'
+    model_description = './models/this_needs_to_be_provided_by_you.prototxt'
+ 
     #--------------------------------------------------------------------
-
-    profiler = cProfile.Profile()
-    profiler.enable()
 
     os.system("./generate_image_list_for_demo.sh")
     image_list_file = open('./image_list_video.txt')
 
-    if not os.path.exists(image_results_folder):
-        os.makedirs(image_results_folder)
+    if not os.path.exists(image_results_dir):
+        os.makedirs(image_results_dir)
 
     input_images_for_demo = image_list_file.read().splitlines()
     image_list_file.close()
 
     writer = None
     if createVideoFromResults:
+        if not os.path.exists(video_results_dir):
+            os.makedirs(video_results_dir)
         fps = 30
         codec = 'mp4v'
-        videoFileName = 'result.mkv'
+        videoFileName = 'result_at_30fps.mkv'
         fourcc = cv2.VideoWriter_fourcc(*codec)
-        writer = cv2.VideoWriter(videoFileName, fourcc, fps, (input_w, input_h))
+        writer = cv2.VideoWriter(video_results_dir + videoFileName, fourcc, fps, (input_w, input_h))
 
     # Cache first 100 images for fast access
     prefetchNumFiles = 100
@@ -192,7 +230,10 @@ if __name__ == "__main__":
     if show_gui:
         cv2.namedWindow("Demo")
 
-    num_images_processed = 0
+    # profiler = cProfile.Profile()
+    # profiler.enable()
+
+    num_images_processed = 0    
     for image in input_images_for_demo:     # main loop
 
         initial_time = time.time()
@@ -220,8 +261,8 @@ if __name__ == "__main__":
 	if show_gui:
             cv2.imshow("Demo", blended_result)
 
-	if save_results:
-	    cv2.imwrite(results_folder + os.path.basename(image))
+	if save_image_results:
+	    cv2.imwrite(image_results_dir + os.path.basename(image), blended_result)
 
         print("cv2 output time: {} ms.".format(round((time.time() - start) * 1000)))
 
@@ -249,7 +290,7 @@ if __name__ == "__main__":
         cv2.destroyWindow("Demo")
 
 
-    profiler.disable()
-    print('\n\n\nProfiling results:')
-    profiler.print_stats(sort='time')
+    # profiler.disable()
+    # print('\n\n\nProfiling results:')
+    # profiler.print_stats(sort='time')
 

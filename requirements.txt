@@ -1,0 +1,7 @@
+numpy>=1.10.0
+weave>=0.15.0
+
+#you may need to install the following modules manually
+cv2>=0.0.1
+caffe>=0.0.1
+
