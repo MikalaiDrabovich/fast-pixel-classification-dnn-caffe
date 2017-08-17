@@ -7,7 +7,7 @@ You just need to copy your own pretrained model and its description to __./model
 
 To run with GUI you need to [install OpenCV with GUI support](https://stackoverflow.com/questions/36833661/installing-opencv-with-gui-on-ubuntu).
 
-If GUI is not necessary, 'pip install opencv-python' may be sufficient.
+If GUI is not necessary, `pip install opencv-python` may be sufficient.
 
 # How to use
 Set paths and parameters in __main__ function, then
