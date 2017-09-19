@@ -9,6 +9,8 @@ To run with GUI you need to [install OpenCV with GUI support](https://stackoverf
 
 If GUI is not necessary, `pip install opencv-python` may be sufficient.
 
+For instructions on how to setup hipCafee, please see https://github.com/ROCmSoftwarePlatform/hipCaffe/blob/hip/README.ROCm.md
+
 # How to use
 Set paths and parameters in __main__ function, then
 ```bash
