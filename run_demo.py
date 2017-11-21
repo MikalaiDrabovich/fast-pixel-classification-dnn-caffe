@@ -24,14 +24,15 @@ import sys
 import time
 
 #import cProfile
-import cv2
+
 import numpy as np
 import weave
 
 #if necessary, use custom caffe build
-#sys.path.insert(0, '/home/ndr/Downloads/caffe/install_new/python')
+sys.path.insert(0, '../hipCaffe/python/')
 import caffe
 
+import cv2
 
 def id2bgr(im):
     """
@@ -111,9 +112,10 @@ def feed_and_run(input_frame):
     :return: forward_time, segmentation_result
     """
     start = time.time()
-    input_frame = np.array(input_frame, dtype=np.float32)
-    input_frame = fast_mean_subtraction_bgr(input_frame)
     input_frame = input_frame.transpose((2, 0, 1))
+    print("Data transpose took {} ms.".format(round((time.time() - start) * 1000)))
+
+    start = time.time()
     net.blobs['data'].data[...] = input_frame
     print("Data input took {} ms.".format(round((time.time() - start) * 1000)))
 
@@ -147,40 +149,35 @@ if __name__ == "__main__":
     video_results_dir = './video_results/'
     
     show_gui = True
-    save_image_results = True
-    
+    save_image_results = False
     image_results_dir = './image_results/'
 
     input_w = 2048
     input_h = 1024
 
-    # # Models with argmax and without upsampling are significantly faster
-    # # but not necessary worse for driving decisions, in part because of reaction time.
-    
+    # # Models with argmax and without upsampling are faster
+
+    model_description = '../hipCaffe/models/deploy_model_without_upsampling_without_argmax.prototxt'
+    model_has_argmax = False
+    model_weights = '../hipCaffe/models/weights.caffemodel'
+ 
     # # original model
-    # # model_description = './models/deploy_model_with_upsampling_without_argmax.prototxt'
+    # # model_description = '../hipCaffe/models/deploy_model_with_upsampling_without_argmax.prototxt'
     # # model_has_argmax = False
     # # 
     # # improved 1
-    # # odel_description = './models/deploy_model_with_upsampling_with_argmax.prototxt'
+    # # odel_description = '../hipCaffe/models/deploy_model_with_upsampling_with_argmax.prototxt'
     # # model_has_argmax = True
     # # 
     # # improved 2
-    # # model_description = './models/deploy_model_without_upsampling_without_argmax.prototxt'
+    # # model_description = '../hipCaffe/models/deploy_model_without_upsampling_without_argmax.prototxt'
     # # model_has_argmax = False
     # # 
     # # improved 3, should be the fastest
-    # # model_description = './models/deploy_model_without_upsampling_with_argmax.prototxt'
+    # # model_description = '../hipCaffe/models/deploy_model_without_upsampling_with_argmax.prototxt'
     # # model_has_argmax = True
-    # # model_weights = './models/weights.caffemodel'
- 
-    # comment out these two lines once you copied trained models and descriptions to ./models
-    model_weights = './models/this_needs_to_be_provided_by_you.caffemodel'
-    model_description = './models/this_needs_to_be_provided_by_you.prototxt'
- 
+    # # model_weights = '../hipCaffe/models/weights.caffemodel'
     #--------------------------------------------------------------------
-
-
 
     os.system("./generate_image_list_for_demo.sh")
     image_list_file = open('./image_list_video.txt')
@@ -198,14 +195,15 @@ if __name__ == "__main__":
         fps = 30
         codec = 'mp4v'
         videoFileName = 'result_at_30fps.mkv'
-        fourcc = cv2.VideoWriter_fourcc(*codec)
+        fourcc = cv2.cv.CV_FOURCC(*codec)
         writer = cv2.VideoWriter(video_results_dir + videoFileName, fourcc, fps, (input_w, input_h))
 
     # Cache first 100 images for fast access
-    prefetchNumFiles = 100
+    prefetchNumFiles = 28
     input_data = []
+    input_data_uint8 = []
     if prefetchNumFiles > 0:
-        print("Prefetching first %d images" % prefetchNumFiles)
+        print("Prefetching first %d image files" % prefetchNumFiles)
         start = time.time()
         num_prefetched = 0
 
@@ -213,7 +211,10 @@ if __name__ == "__main__":
             if num_prefetched > prefetchNumFiles:
                 break
             frame = cv2.imread(file_path)
-            input_data.append(frame)
+            input_data_uint8.append(frame)
+            frame = np.array(frame, dtype=np.float32)
+            frame_ready = fast_mean_subtraction_bgr(frame)
+            input_data.append(frame_ready)
             print('\r' + "Prefetching files: %d%% " % (100 * num_prefetched / float(prefetchNumFiles)))
             sys.stdout.flush()
             num_prefetched += 1
@@ -224,6 +225,7 @@ if __name__ == "__main__":
     caffe.set_mode_gpu()
     caffe.set_device(0)
     net = caffe.Net(model_description, 1, weights=model_weights)
+
 
     result_out_upscaled = np.empty((input_h, input_w, 3), dtype=np.uint8)
     # transparency of the overlaid object segments
@@ -236,6 +238,7 @@ if __name__ == "__main__":
     # profiler = cProfile.Profile()
     # profiler.enable()
 
+   
     num_images_processed = 0    
     for image in input_images_for_demo:     # main loop
 
@@ -244,8 +247,11 @@ if __name__ == "__main__":
         start = time.time()
         if num_images_processed < prefetchNumFiles:
             frame = input_data[num_images_processed]
+            frame_uint8 = input_data_uint8[num_images_processed]
         else:
-            frame = cv2.imread(image)
+            frame_uint8 = cv2.imread(image)
+            frame_32f = np.array(frame_uint8, dtype=np.float32)
+            frame = fast_mean_subtraction_bgr(frame_32f)
 
         print("File read time: {} ms.".format(round((time.time() - start) * 1000)))
 
@@ -256,8 +262,12 @@ if __name__ == "__main__":
         print("Resize time: {} ms.".format(round((time.time() - start) * 1000)))
 
         start = time.time()
-        cv2.addWeighted(result_out_upscaled, alpha, frame, 1.0 - alpha, 0.0, blended_result)
+        cv2.addWeighted(result_out_upscaled, alpha, frame_uint8, 1.0 - alpha, 0.0, blended_result)#, cv2.CV_8U)
         print("Overlay detection results: {} ms.".format(round((time.time() - start) * 1000)))
+
+        start = time.time()
+        cv2.putText(blended_result, str(int(core_forward_time)) + "ms.", (20, 950), cv2.FONT_HERSHEY_SIMPLEX, 3, (0, 0, 255), 10)
+        print("Text render time: {} ms.".format(round((time.time() - start) * 1000)))
 
         start = time.time()
 
@@ -274,7 +284,7 @@ if __name__ == "__main__":
             writer.write(blended_result)
             print("Add frame to video file: {} ms.".format(round((time.time() - start) * 1000)))
 
-        key = cv2.waitKey(1)
+        key = cv2.waitKey(2)
         if key == 27:  # exit on ESC
             break
 
@@ -296,4 +306,3 @@ if __name__ == "__main__":
     # profiler.disable()
     # print('\n\n\nProfiling results:')
     # profiler.print_stats(sort='time')
-
