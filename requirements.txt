@@ -1,4 +1,4 @@
-numpy>=1.10.0
+numpy>=1.13.0
 weave>=0.15.0
 
 #you may need to install the following modules manually
